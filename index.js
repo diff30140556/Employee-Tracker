@@ -7,7 +7,6 @@ const employeeQuery = new EmployeeQuery;
 
 // Name validation
 function validateName(name) {
-
     // input can not be blank
     if (name.trim() === '') {
         return 'The name can not be blank';
