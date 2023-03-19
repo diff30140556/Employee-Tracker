@@ -1,3 +1,6 @@
+
+-- These are just SQL query templates for testing
+
 SELECT employee. *, e2.first_name AS manager_first_name, e2.last_name AS manager_last_name
 FROM employee
 JOIN employee AS e2
@@ -26,3 +29,9 @@ ORDER BY role.id ASC;
 SELECT id 
 FROM Employee 
 WHERE CONCAT(first_name, ' ', last_name) = "Martin Ho";
+
+SELECT department.name as Department, SUM(role.salary) as Budget
+FROM department
+JOIN role ON department.id = role.department_id
+JOIN employee ON employee.role_id = role.id
+WHERE role.department_id = 1;

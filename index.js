@@ -1,39 +1,47 @@
-const express = require('express');
-const mysql = require('mysql2');
+// import needed packages
 const cTable = require('console.table');
 const inquirer = require('inquirer');
-const fs = require('fs');
+const figlet = require('figlet');
 const EmployeeQuery = require('./lib/EmployeeQuery');
 const employeeQuery = new EmployeeQuery;
-require('dotenv').config();
 
-// const db = mysql.createConnection(
-//     {
-//         host: 'localhost',
-//         user: process.env.DB_USER,
-//         password: process.env.DB_PASSWORD,
-//         database: process.env.DB_NAME
-//     },
-//     console.log(`\nConnected to the employee_db database\n`)
-// )
+// Name validation
+function validateName(name) {
 
+    // input can not be blank
+    if (name.trim() === '') {
+        return 'The name can not be blank';
+    }
+    // Return true if input is valid
+    return true;
+}
 
+// Number validation
+function validateNum(num) {
+    if (isNaN(num)) {
+        return 'Please enter a valid number';
+    } 
+    // Return true if input is valid
+    return true;
+}
 
+// display main menu function
 function mainMenu() {
-    console.log(`Welcome to the system`);
     inquirer
         .prompt([
             {
                 type: 'list',
                 name: 'function',
                 message: `What would you like to do?`,
-                choices: ["View All Departments", "View All Roles", "View All Employees", "Add Department", "Add Role", "Add Employee", "Update Employee Role", "Quit"],
+                choices: ["View All Departments", "Add Department", "View All Roles", "Add Role", "View All Employees", "Add Employee", "Update Employee Role","View Total Budget", "Quit"],
             }
         ])
         .then( ans => navigation(ans.function) )
         .catch( err => console.log(err) )
 }
 
+// function to determine what methods should be called per user's requirement
+// using async and await to prevent the asynchronous issue
 async function navigation(ans) {
     console.log('\n');
     switch (ans){
@@ -41,8 +49,6 @@ async function navigation(ans) {
             try{
                 const allDepartments = await employeeQuery.viewAllDepartments();
                 console.table(allDepartments);
-                console.log('\n');
-                mainMenu()
             } catch (err) {
                 console.log(err);
             }
@@ -51,8 +57,6 @@ async function navigation(ans) {
             try{
                 const allRoles = await employeeQuery.viewAllRoles();
                 console.table(allRoles);
-                console.log('\n');
-                mainMenu()
             } catch (err) {
                 console.log(err);
             }
@@ -61,62 +65,67 @@ async function navigation(ans) {
             try{
                 const allEmployees = await employeeQuery.viewAllEmployees();
                 console.table(allEmployees);
-                console.log('\n');
-                mainMenu()
             } catch (err) {
                 console.log(err);
             }
             break;
         case "Add Department":
-            addDepartment();
+            await addDepartment();
             break;
         case "Add Role":
-            addRole();
+            await addRole();
             break;
         case "Add Employee":
-            addEmployee();
+            await addEmployee();
             break;
         case "Update Employee Role":
-            updateEmployee();
+            await updateEmployee();
+            break;
+        case "View Total Budget":
+            await viewTotalBudget();
             break;
         case "Quit":
             console.log('Bye!')
             process.exit(0);
     }
+    console.log('\n')
+    mainMenu();
 }
 
-function addDepartment() {
-    inquirer
+// function of add a department
+async function addDepartment() {
+    await inquirer
         .prompt([
             {
                 type: "input",
                 name: "newDepartment",
                 message: "What is the name of the department?",
+                validate: name => validateName(name),
             }
         ])
         .then( async ans => {
-            await employeeQuery.addDepartment(ans.newDepartment)
-            console.log('\n');
-            console.log('done');
-            mainMenu();
+            employeeQuery.addDepartment(ans.newDepartment)
         })
         .catch( err => console.log(err))
 }
 
+// function of add a role
 async function addRole() {
     const allDepartments = await employeeQuery.viewAllDepartments();
     const allDepartmentsName = allDepartments.map(el => el.name);
-    inquirer
+    await inquirer
         .prompt([
             {
                 type: "input",
                 name: "title",
                 message: "What is the name of the role?",
+                validate: name => validateName(name),
             },
             {
-                type: "number",
+                type: "input",
                 name: "salary", 
                 message: "What is the salary of the role?",
+                validate: num => validateNum(num),
             },
             {
                 type: 'list',
@@ -125,31 +134,32 @@ async function addRole() {
                 choices: allDepartmentsName, 
             }
         ])
-        .then( async ans => {
-            await employeeQuery.addRole(ans)
-            console.log('\n');
-            mainMenu();
+        .then( ans => {
+            employeeQuery.addRole(ans)
         })
         .catch( err => console.log(err))
 }
 
+// function of add an employee
 async function addEmployee() {
     const allRoles = await employeeQuery.viewAllRoles();
     const allRolesName = allRoles.map( role => role.title );
     const allManagers = await employeeQuery.viewAllManagers();
     const allManagersName = allManagers.map(manager => manager.first_name +' '+ manager.last_name)
     allManagersName.splice(0, 0, "None");
-    inquirer
+    await inquirer
         .prompt([
             {
                 type: "input",
                 name: "first_name",
                 message: "What is the employee's first name?",
+                validate: name => validateName(name),
             },
             {
                 type: "input",
                 name: "last_name",
                 message: "What is the employee's last name?",
+                validate: name => validateName(name),
             },
             {
                 type: "list",
@@ -164,14 +174,13 @@ async function addEmployee() {
                 choices: allManagersName, 
             }
         ])
-        .then( async ans => {
-            await employeeQuery.addEmployee(ans)
-            console.log('\n');
-            mainMenu();
+        .then( ans => {
+            employeeQuery.addEmployee(ans)
         })
         .catch( err => console.log(err))
 }
 
+// function of update an existing employee
 async function updateEmployee() {
     const allRoles = await employeeQuery.viewAllRoles();
     const allRolesName = allRoles.map( role => role.title );
@@ -180,7 +189,7 @@ async function updateEmployee() {
             name: employee.first_name +' '+ employee.last_name,
             value: employee.id
     }))
-    inquirer
+    await inquirer
         .prompt([
             {
                 type: "list",
@@ -195,16 +204,42 @@ async function updateEmployee() {
                 choices: allRolesName, 
             }   
         ])
-        .then( async ans => {
-            await employeeQuery.updateEmployee(ans)
-            console.log('\n');
-            mainMenu();
+        .then( ans => {
+            employeeQuery.updateEmployee(ans)
         })
         .catch( err => console.log(err))
 }
 
-// db.query(`SELECT * FROM employee`, (err, res) => {
-//     console.table(res);
-// })
+// function of view the total budget of a department
+async function viewTotalBudget() {
+    const allDepartments = await employeeQuery.viewAllDepartments();
+    const allDepartmentsName = allDepartments.map(el => el.name);
+    await inquirer
+        .prompt([
+            {
+                type: 'list',
+                name: 'department',
+                message: `Which department's budget you want to review?`,
+                choices: allDepartmentsName, 
+            }
+        ])
+        .then( async ans => {
+            const budget = await employeeQuery.viewTotalBudget(ans)
+            console.log('\n');
+            console.table(budget);
+        })
+        .catch( err => console.log(err))
+}
 
-mainMenu();
+// initial function
+function init() {
+    console.log(`Welcome to the system!!`);
+    // ASCII Art
+    console.log(figlet.textSync('Employee Manager', {
+        font: 'Big',
+    }))
+    console.log('\n')
+    mainMenu();
+}
+
+init();
